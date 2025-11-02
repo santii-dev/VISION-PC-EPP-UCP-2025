@@ -1,0 +1,80 @@
+/* App specific styles */
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+
+/* Particles background */
+.particles-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  animation: float-particle 20s infinite ease-in-out;
+}
+
+@keyframes float-particle {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  33% {
+    transform: translate(100px, -100px);
+  }
+  66% {
+    transform: translate(-100px, 100px);
+  }
+}
+
+/* Gradient orbs */
+.gradient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.orb-1 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, #10b981 0%, #059669 30%, transparent 70%);
+  top: -300px;
+  right: -200px;
+  animation: float 15s ease-in-out infinite;
+}
+
+.orb-2 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, #059669 0%, #047857 30%, transparent 70%);
+  bottom: -200px;
+  left: -150px;
+  animation: float 20s ease-in-out infinite reverse;
+}
+
+.orb-3 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, #34d399 0%, #10b981 30%, transparent 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: pulse 10s ease-in-out infinite;
+}
+
+.gradient-orb.no-animation {
+  animation: none !important;
+}
