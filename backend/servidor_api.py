@@ -157,11 +157,18 @@ async def listar_registros(limite: int = 100):
             if 'cumplimiento_gafas' in registro:
                 registro['cumplimiento_gafas'] = registro['cumplimiento_gafas']
         
-        return JSONResponse(content={
-            "status": "success",
-            "total": len(registros),
-            "registros": registros
-        })
+        return JSONResponse(
+            content={
+                "status": "success",
+                "total": len(registros),
+                "registros": registros
+            },
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

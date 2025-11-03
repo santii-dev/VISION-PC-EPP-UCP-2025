@@ -23,7 +23,8 @@ const Dashboard = ({ isSystemActive, setIsSystemActive, onLogout }) => {
   // Cargar datos del backend
   const fetchData = async (showMessage = false) => {
     try {
-      const response = await axios.get('/api/registros')
+      // Agregar timestamp para evitar caché del navegador
+      const response = await axios.get(`/api/registros?_t=${Date.now()}`)
       const data = response.data.registros
 
       // Guardar registros SIN invertir (más nuevo primero para la tabla)
@@ -530,8 +531,10 @@ const Dashboard = ({ isSystemActive, setIsSystemActive, onLogout }) => {
                   <div className="line-chart glass">
                     <div className="chart-header">
                       <div>
-                        <h4>Cumplimiento General EPP - Últimos 10 Registros</h4>
-                        <p className="chart-subtitle">Porcentaje de cumplimiento en el tiempo</p>
+                        <h4>Cumplimiento General EPP - Últimos 20 Registros</h4>
+                        <p className="chart-subtitle">
+                          Porcentaje de cumplimiento en el tiempo • Mostrando {Math.min(registros.length, 20)} de {registros.length} registros totales
+                        </p>
                       </div>
                       <div className="chart-legend">
                         <div className="legend-item">
@@ -579,8 +582,9 @@ const Dashboard = ({ isSystemActive, setIsSystemActive, onLogout }) => {
 
                           {/* Line chart - ÚLTIMOS 20 en orden correcto */}
                           {(() => {
-                            // Tomar los últimos 20 y darles vuelta para el gráfico (viejo a nuevo)
-                            const ultimos20 = [...registros].slice(-20).reverse()
+                            // registros viene del backend ordenado DESC (más nuevo primero)
+                            // Invertir para tener del más viejo al más nuevo, luego tomar últimos 20
+                            const ultimos20 = [...registros].reverse().slice(-20)
 
                             return ultimos20.length > 1 && (
                               <>
@@ -626,8 +630,37 @@ const Dashboard = ({ isSystemActive, setIsSystemActive, onLogout }) => {
                                         cumplimiento >= 50 ? '#86efac' :
                                           cumplimiento >= 30 ? '#fbbf24' : '#f87171'
 
+                                  // Formatear fecha para el tooltip
+                                  const fecha = new Date(r.timestamp || r.fecha_hora)
+                                  const fechaStr = fecha.toLocaleString('es-CO', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })
+
                                   return (
-                                    <g key={`point-${r.id}`}>
+                                    <g 
+                                      key={`point-${r.id}`}
+                                      style={{ cursor: 'pointer' }}
+                                      onClick={() => {
+                                        // Cambiar a la pestaña de registros
+                                        setActiveTab('registros')
+                                        // Esperar un momento para que se renderice la tabla
+                                        setTimeout(() => {
+                                          // Buscar el elemento del registro y hacer scroll
+                                          const elemento = document.querySelector(`tr[data-registro-id="${r.id}"]`)
+                                          if (elemento) {
+                                            elemento.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                            // Resaltar temporalmente
+                                            elemento.style.backgroundColor = 'rgba(74, 222, 128, 0.2)'
+                                            setTimeout(() => {
+                                              elemento.style.backgroundColor = ''
+                                            }, 2000)
+                                          }
+                                        }, 100)
+                                      }}
+                                    >
                                       <motion.circle
                                         cx={x}
                                         cy={y}
@@ -648,8 +681,9 @@ const Dashboard = ({ isSystemActive, setIsSystemActive, onLogout }) => {
                                         initial={{ scale: 0 }}
                                         animate={{ scale: 1 }}
                                         transition={{ delay: i * 0.1 + 0.1, type: "spring" }}
+                                        whileHover={{ scale: 1.3 }}
                                       >
-                                        <title>{`Registro #${r.id}: ${cumplimiento.toFixed(1)}%`}</title>
+                                        <title>{`Registro #${r.id}\n${fechaStr}\nCumplimiento: ${cumplimiento.toFixed(1)}%\nPersonas: ${r.total_personas}\nCascos: ${r.cumplimiento_cascos?.toFixed(0)}% | Chalecos: ${r.cumplimiento_chalecos?.toFixed(0)}% | Gafas: ${r.cumplimiento_gafas?.toFixed(0)}%\n\n🖱️ Clic para ver detalles`}</title>
                                       </motion.circle>
                                     </g>
                                   )
@@ -673,13 +707,18 @@ const Dashboard = ({ isSystemActive, setIsSystemActive, onLogout }) => {
                         </svg>
                       )}
                     </div>
-                    {registros.length >= 2 && (
-                      <div className="chart-labels">
-                        {[...registros].slice(-20).reverse().map((r, i) => (
-                          <span key={r.id} className="chart-label">
-                            #{r.id}
-                          </span>
-                        ))}
+                    {/* Contador de registros totales */}
+                    {registros.length > 0 && (
+                      <div className="chart-footer" style={{
+                        textAlign: 'center',
+                        padding: '15px 0 0 0',
+                        color: 'rgba(255, 255, 255, 0.6)',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                        marginTop: '15px'
+                      }}>
+                        📊 Total de registros en el sistema: <strong style={{ color: '#4ade80' }}>{registros.length}</strong>
                       </div>
                     )}
                   </div>
@@ -730,6 +769,7 @@ const Dashboard = ({ isSystemActive, setIsSystemActive, onLogout }) => {
                       {registros.map((registro) => (
                         <motion.tr
                           key={registro.id}
+                          data-registro-id={registro.id}
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           transition={{ duration: 0.3 }}
