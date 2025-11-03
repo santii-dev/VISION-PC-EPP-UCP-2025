@@ -314,6 +314,18 @@ async def iniciar_camara():
                 "pid": camera_process.pid
             })
         
+        # 🚦 ENVIAR SEÑAL VERDE AL ESP32 (sistema activándose)
+        try:
+            import requests
+            requests.post(
+                "http://192.168.1.34:80/led",
+                json={"color": "verde"},
+                timeout=1
+            )
+            print("✅ ESP32: Sistema activado → VERDE")
+        except:
+            print("⚠️ ESP32: No se pudo enviar señal de activación")
+        
         # Iniciar main.py
         main_path = os.path.join(BASE_DIR, "main.py")
         camera_process = subprocess.Popen(
@@ -359,6 +371,18 @@ async def detener_camara():
             parent.kill()
         
         camera_process = None
+        
+        # 🚦 APAGAR LED DEL ESP32 (sistema desactivado)
+        try:
+            import requests
+            requests.post(
+                "http://192.168.1.34:80/led",
+                json={"color": "apagado"},
+                timeout=1
+            )
+            print("✅ ESP32: Sistema desactivado → LED APAGADO")
+        except:
+            print("⚠️ ESP32: No se pudo enviar señal de desactivación")
         
         return JSONResponse(content={
             "status": "success",

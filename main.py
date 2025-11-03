@@ -1,7 +1,10 @@
 
 
 
-# 1. Import the InferencePipeline library
+# Sistema de Detección EPP con Roboflow + Alertas ESP32
+# Autor: Santiago
+# Fecha: 2025-11-02
+
 from inference import InferencePipeline
 import cv2
 import onnxruntime as ort
@@ -13,23 +16,26 @@ from datetime import datetime
 import threading
 from queue import Queue
 import time
-
 import warnings
+
 warnings.filterwarnings("ignore", category=UserWarning)
 
-# URL de tu backend para enviar los datos procesados
-BACKEND_URL = "http://localhost:8000/api/registros"  # Endpoint del backend
+# ============================================================================
+# MÓDULO ESP32 - Sistema de Alertas LED
+# ============================================================================
+from esp32.esp32_worker import iniciar_worker_esp32, agregar_detecciones_esp32
 
-# ⚙️ CONFIGURACIÓN DE FRECUENCIA
-# Si la cámara va a ~15 FPS real, entonces:
-# 5 segundos = 75 frames, 8 segundos = 120 frames
-PROCESAR_CADA_N_FRAMES = 75  # Procesar cada 5 segundos aprox (ajustado para cámara ~15 FPS)
-MOSTRAR_JSON_COMPLETO = False  # Cambiar a True si quieres ver el JSON completo en consola
+# ============================================================================
+# CONFIGURACIÓN
+# ============================================================================
+BACKEND_URL = "http://localhost:8000/api/registros"
+PROCESAR_CADA_N_FRAMES = 75  # Procesar cada 5 segundos (~15 FPS real)
+MOSTRAR_JSON_COMPLETO = False
 
 # Variables internas
 frame_counter = 0
 ultimo_timestamp = None
-cola_backend = Queue(maxsize=30)  # Máximo 30 peticiones en cola
+cola_backend = Queue(maxsize=30)
 
 def worker_backend():
     """
@@ -77,6 +83,13 @@ def worker_backend():
 # Iniciar worker en thread separado
 thread_worker = threading.Thread(target=worker_backend, daemon=True)
 thread_worker.start()
+
+# ============================================================================
+# 🚦 INICIAR WORKER ESP32 (NUEVO)
+# ============================================================================
+iniciar_worker_esp32()  # ← Comentar esta línea para desactivar ESP32
+# ============================================================================
+
 print("="*80)
 print("🚀 SISTEMA DE CAPTURA EPP INICIADO")
 print("="*80)
@@ -130,7 +143,7 @@ def my_sink(result, video_frame):
         cv2.imshow("Workflow Image", img)
         cv2.waitKey(1)
     
-    # Solo procesar cada N frames para no bloquear el video
+    # Solo procesar cada N frames para la BD (no bloquear el video)
     frame_counter += 1
     if frame_counter % PROCESAR_CADA_N_FRAMES != 0:
         return  # Saltar este frame
@@ -166,10 +179,20 @@ def my_sink(result, video_frame):
             print(f"🎯 Detectado: {len(clases)} objeto(s)")
             for i, (clase, conf) in enumerate(zip(clases, confidences)):
                 print(f"  {i+1}. {clase} - Confianza: {conf:.2%}")
+            
+            # Enviar al ESP32
+            agregar_detecciones_esp32(clases)
+            
         else:
             print("⚪ Sin detecciones en este frame")
+            agregar_detecciones_esp32([])
+    else:
+        # No hay modelo de detección en el output
+        print("⚪ Sin modelo de detección en output")
+        agregar_detecciones_esp32([])
+
     
-    # OPCIONAL: Mostrar JSON completo (solo para debugging)
+    # Mostrar JSON completo (solo para debugging)
     if MOSTRAR_JSON_COMPLETO:
         output_para_log = copy.deepcopy(output_crudo)
         if "output_image" in output_para_log and isinstance(output_para_log["output_image"], dict):
